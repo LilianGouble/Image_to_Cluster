@@ -1,0 +1,64 @@
+---
+- name: Deploy Custom Nginx to K3d
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    app_name: mario-nginx
+    image_name: custom-nginx:latest
+    container_port: 80
+    service_port: 80
+
+  tasks:
+    - name: Ensure namespace exists
+      kubernetes.core.k8s:
+        name: default
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Create Nginx Deployment
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ app_name }}"
+            namespace: default
+            labels:
+              app: "{{ app_name }}"
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: "{{ app_name }}"
+            template:
+              metadata:
+                labels:
+                  app: "{{ app_name }}"
+              spec:
+                containers:
+                - name: nginx
+                  image: "{{ image_name }}"
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                  - containerPort: "{{ container_port }}"
+
+    - name: Create Service NodePort
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ app_name }}"
+            namespace: default
+          spec:
+            selector:
+              app: "{{ app_name }}"
+            type: NodePort
+            ports:
+            - protocol: TCP
+              port: "{{ service_port }}"
+              targetPort: "{{ container_port }}"
