@@ -4,7 +4,7 @@
   connection: local
   gather_facts: false
   vars:
-    # Valeur par défaut, mais sera écrasée par le Makefile
+    # Nom aligné avec le Makefile
     app_name: app-lilial-docker
     image_name: custom-nginx:latest
     container_port: 80

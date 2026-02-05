@@ -15,7 +15,7 @@ help:
 all: install create-cluster build import deploy expose
 	@echo "🚀 Déploiement terminé avec succès !"
 
-# 2. Installation des outils (CORRIGÉ - Tolérance aux erreurs apt + K3d)
+# 2. Installation des outils
 install:
 	@echo "--- 🛠️ Vérification / Installation des prérequis ---"
 	@# Installation de Packer si absent
@@ -61,24 +61,35 @@ import:
 	@echo "--- 📦 Import de l'image dans le cluster ---"
 	k3d image import $(IMAGE_NAME) -c $(CLUSTER_NAME)
 
-# 6. Déploiement Ansible (Variable injectée ici)
+# 6. Déploiement Ansible
 deploy:
 	@echo "--- 🚀 Déploiement via Ansible ---"
 	@# On passe le nom de l'app en paramètre pour être sûr
 	ansible-playbook -i inventory.ini playbook.yml -e "app_name=$(APP_NAME) image_name=$(IMAGE_NAME)"
 
-# 7. Accès
+# 7. Accès (Version Robuste avec Logs)
 expose:
 	@echo "--- 🌍 Exposition de l'application ---"
 	@echo "⏳ Attente que le déploiement soit prêt (timeout 60s)..."
 	@kubectl wait --for=condition=available --timeout=60s deployment/$(APP_NAME)
 	@echo "Mise en place du port-forwarding sur le port 8081..."
 	@pkill -f "kubectl port-forward svc/$(APP_NAME)" || true
-	@nohup kubectl port-forward svc/$(APP_NAME) 8081:80 > /dev/null 2>&1 &
-	@echo "✅ Application accessible sur le port 8081 (Mettez-le en Public)."
+	@# On lance en background avec redirection des logs
+	@nohup kubectl port-forward svc/$(APP_NAME) 8081:80 > port-forward.log 2>&1 < /dev/null & echo $$! > port-forward.pid
+	@echo "⏳ Vérification de la stabilité du tunnel (3s)..."
+	@sleep 3
+	@if ps -p $$(cat port-forward.pid) > /dev/null; then \
+		echo "✅ Tunnel établi avec succès !"; \
+		echo "👉 Vérifiez l'onglet PORTS : Le port 8081 doit être actif."; \
+	else \
+		echo "❌ Le tunnel a échoué. Voici le log d'erreur :"; \
+		cat port-forward.log; \
+		exit 1; \
+	fi
 
 clean:
 	@echo "--- 🧹 Nettoyage ---"
 	k3d cluster delete $(CLUSTER_NAME) || true
 	docker rmi $(IMAGE_NAME) || true
 	pkill -f "kubectl port-forward" || true
+	rm -f port-forward.log port-forward.pid
