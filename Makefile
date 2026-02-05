@@ -66,9 +66,12 @@ deploy:
 	@echo "--- 🚀 Déploiement via Ansible ---"
 	ansible-playbook -i inventory.ini playbook.yml
 
-# 7. Accès
+# 7. Accès (CORRIGÉ - Ajout d'une attente active)
 expose:
 	@echo "--- 🌍 Exposition de l'application ---"
+	@echo "⏳ Attente que le déploiement soit prêt (timeout 60s)..."
+	@kubectl wait --for=condition=available --timeout=60s deployment/$(APP_NAME)
+	@echo "Mise en place du port-forwarding sur le port 8081..."
 	@pkill -f "kubectl port-forward svc/$(APP_NAME)" || true
 	@nohup kubectl port-forward svc/$(APP_NAME) 8081:80 > /dev/null 2>&1 &
 	@echo "✅ Application accessible sur le port 8081 (Mettez-le en Public)."
