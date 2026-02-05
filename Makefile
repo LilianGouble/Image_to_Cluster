@@ -15,14 +15,16 @@ help:
 all: install create-cluster build import deploy expose
 	@echo "🚀 Déploiement terminé avec succès !"
 
-# 2. Installation des outils (CORRIGÉ)
+# 2. Installation des outils (CORRIGÉ - Tolérance aux erreurs apt)
 install:
 	@echo "--- 🛠️ Vérification / Installation des prérequis ---"
 	@if ! command -v packer > /dev/null; then \
 		echo "Packer non trouvé. Installation..."; \
 		curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -; \
 		sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $$(lsb_release -cs) main" -y; \
-		sudo apt-get update && sudo apt-get install packer -y; \
+		echo "Mise à jour des dépôts (ignorer les erreurs tierces)..."; \
+		sudo apt-get update || true; \
+		sudo apt-get install packer -y; \
 	else \
 		echo "✅ Packer est déjà installé."; \
 	fi
