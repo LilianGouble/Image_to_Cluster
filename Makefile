@@ -15,9 +15,10 @@ help:
 all: install create-cluster build import deploy expose
 	@echo "🚀 Déploiement terminé avec succès !"
 
-# 2. Installation des outils (CORRIGÉ - Tolérance aux erreurs apt)
+# 2. Installation des outils (CORRIGÉ - Tolérance aux erreurs apt + K3d)
 install:
 	@echo "--- 🛠️ Vérification / Installation des prérequis ---"
+	@# Installation de Packer si absent
 	@if ! command -v packer > /dev/null; then \
 		echo "Packer non trouvé. Installation..."; \
 		curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -; \
@@ -27,6 +28,13 @@ install:
 		sudo apt-get install packer -y; \
 	else \
 		echo "✅ Packer est déjà installé."; \
+	fi
+	@# Installation de K3d si absent (AJOUTÉ ICI)
+	@if ! command -v k3d > /dev/null; then \
+		echo "K3d non trouvé. Installation..."; \
+		curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash; \
+	else \
+		echo "✅ K3d est déjà installé."; \
 	fi
 	@echo "Installation des librairies Python..."
 	@pip install ansible kubernetes --quiet
