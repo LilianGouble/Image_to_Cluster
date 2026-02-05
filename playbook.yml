@@ -8,7 +8,7 @@
     image_name: custom-nginx:latest
     container_port: 80
     service_port: 80
-
+    
   tasks:
     - name: Ensure namespace exists
       kubernetes.core.k8s:
