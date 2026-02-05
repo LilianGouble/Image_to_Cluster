@@ -4,20 +4,22 @@
   connection: local
   gather_facts: false
   vars:
-    app_name: mario-nginx
+    # Valeur par défaut, mais sera écrasée par le Makefile
+    app_name: app-lilial-docker
     image_name: custom-nginx:latest
     container_port: 80
     service_port: 80
-    
+    node_port: 30081
+
   tasks:
-    - name: Ensure namespace exists
+    - name: Création du Namespace
       kubernetes.core.k8s:
         name: default
         api_version: v1
         kind: Namespace
         state: present
 
-    - name: Create Nginx Deployment
+    - name: Déploiement de l'application (Deployment)
       kubernetes.core.k8s:
         state: present
         definition:
@@ -45,7 +47,7 @@
                   ports:
                   - containerPort: "{{ container_port }}"
 
-    - name: Create Service NodePort
+    - name: Exposition du service (Service NodePort)
       kubernetes.core.k8s:
         state: present
         definition:
@@ -62,3 +64,4 @@
             - protocol: TCP
               port: "{{ service_port }}"
               targetPort: "{{ container_port }}"
+              nodePort: "{{ node_port }}"

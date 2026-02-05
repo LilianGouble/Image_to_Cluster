@@ -1,7 +1,7 @@
 # Variables
 CLUSTER_NAME=lab
 IMAGE_NAME=custom-nginx:latest
-APP_NAME=my-custom-app
+APP_NAME=app-lilial-docker
 
 # Phony targets
 .PHONY: help all install create-cluster build import deploy expose clean
@@ -29,7 +29,7 @@ install:
 	else \
 		echo "✅ Packer est déjà installé."; \
 	fi
-	@# Installation de K3d si absent (AJOUTÉ ICI)
+	@# Installation de K3d si absent
 	@if ! command -v k3d > /dev/null; then \
 		echo "K3d non trouvé. Installation..."; \
 		curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash; \
@@ -61,12 +61,13 @@ import:
 	@echo "--- 📦 Import de l'image dans le cluster ---"
 	k3d image import $(IMAGE_NAME) -c $(CLUSTER_NAME)
 
-# 6. Déploiement Ansible
+# 6. Déploiement Ansible (Variable injectée ici)
 deploy:
 	@echo "--- 🚀 Déploiement via Ansible ---"
-	ansible-playbook -i inventory.ini playbook.yml
+	@# On passe le nom de l'app en paramètre pour être sûr
+	ansible-playbook -i inventory.ini playbook.yml -e "app_name=$(APP_NAME) image_name=$(IMAGE_NAME)"
 
-# 7. Accès (CORRIGÉ - Ajout d'une attente active)
+# 7. Accès
 expose:
 	@echo "--- 🌍 Exposition de l'application ---"
 	@echo "⏳ Attente que le déploiement soit prêt (timeout 60s)..."
