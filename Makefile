@@ -67,15 +67,20 @@ deploy:
 	@# On passe le nom de l'app en paramètre pour être sûr
 	ansible-playbook -i inventory.ini playbook.yml -e "app_name=$(APP_NAME) image_name=$(IMAGE_NAME)"
 
-# 7. Accès (Version Robuste avec Logs)
+# 7. Accès (Version Codespaces Safe)
 expose:
 	@echo "--- 🌍 Exposition de l'application ---"
 	@echo "⏳ Attente que le déploiement soit prêt (timeout 60s)..."
 	@kubectl wait --for=condition=available --timeout=60s deployment/$(APP_NAME)
 	@echo "Mise en place du port-forwarding sur le port 8081..."
-	@pkill -f "kubectl port-forward svc/$(APP_NAME)" || true
-	@# On lance en background avec redirection des logs
-	@nohup kubectl port-forward svc/$(APP_NAME) 8081:80 > port-forward.log 2>&1 < /dev/null & echo $$! > port-forward.pid
+	@# Nettoyage propre basé sur le PID
+	@if [ -f port-forward.pid ]; then \
+		echo "Arrêt de l'ancien processus..."; \
+		kill $$(cat port-forward.pid) 2>/dev/null || true; \
+		rm port-forward.pid; \
+	fi
+	@# On écoute sur 0.0.0.0 pour être sûr que Codespaces le capte
+	@nohup kubectl port-forward svc/$(APP_NAME) --address 0.0.0.0 8081:80 > port-forward.log 2>&1 < /dev/null & echo $$! > port-forward.pid
 	@echo "⏳ Vérification de la stabilité du tunnel (3s)..."
 	@sleep 3
 	@if ps -p $$(cat port-forward.pid) > /dev/null; then \
@@ -91,5 +96,5 @@ clean:
 	@echo "--- 🧹 Nettoyage ---"
 	k3d cluster delete $(CLUSTER_NAME) || true
 	docker rmi $(IMAGE_NAME) || true
-	pkill -f "kubectl port-forward" || true
-	rm -f port-forward.log port-forward.pid
+	@if [ -f port-forward.pid ]; then kill $$(cat port-forward.pid) 2>/dev/null || true; rm port-forward.pid; fi
+	rm -f port-forward.log
